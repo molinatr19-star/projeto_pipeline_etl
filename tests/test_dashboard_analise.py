@@ -236,3 +236,11 @@ def test_dias_desde_carga():
     df = _mart()
     agora = pd.Timestamp("2026-11-14 12:59", tz="America/Sao_Paulo")
     assert dias_desde_carga(df, agora) == 3
+
+
+def test_largura_coluna_cabe_o_texto_mais_longo():
+    from pipeline_etl.dashboard.estilo import largura_coluna
+
+    regras = pd.Series(["Deflação", "Expectativa acima do teto da meta"])
+    assert largura_coluna(regras, "Regra") == len("Expectativa acima do teto da meta") * 7 + 28
+    assert largura_coluna(pd.Series(["1,0"]), "Limite") == len("Limite") * 7 + 28  # título maior

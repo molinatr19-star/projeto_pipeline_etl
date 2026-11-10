@@ -153,6 +153,18 @@ def formatar(valor: float | None, casas: int = 1, sufixo: str = "") -> str:
     return texto + sufixo
 
 
+def largura_coluna(
+    valores: pd.Series, titulo: str, px_por_caractere: float = 7.0, folga: int = 28
+) -> int:
+    """Largura em pixels para uma coluna de st.dataframe mostrar o texto mais longo inteiro.
+
+    Considera o título e o maior valor. `folga` cobre o espaçamento interno da célula e o
+    ícone de ordenação do cabeçalho.
+    """
+    maior = max([len(titulo), *(len(str(v)) for v in valores)])
+    return int(maior * px_por_caractere + folga)
+
+
 def cartao_kpi(
     rotulo: str,
     valor: str,

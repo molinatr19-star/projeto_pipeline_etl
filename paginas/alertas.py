@@ -8,6 +8,7 @@ from pipeline_etl.dashboard.estilo import (
     cabecalho,
     chips,
     formatar,
+    largura_coluna,
     titulo_cartao,
 )
 from pipeline_etl.dashboard.graficos import CONFIG_PLOTLY, grafico_linha_tempo_alertas
@@ -32,7 +33,10 @@ if alertas.empty:
     )
     st.stop()
 
-col_sev, col_ind = st.columns(2)
+# Indicador tem mais opções (5) que Severidade (3): coluna mais larga.
+# wrap=True: dentro de colunas o st.pills fica numa linha só e rola na horizontal
+# (cortava "Juro real" em telas menores); com wrap, os botões quebram de linha.
+col_sev, col_ind = st.columns([2, 3], gap="medium")
 severidades = col_sev.pills(
     "Severidade",
     SEVERIDADES,
@@ -40,6 +44,7 @@ severidades = col_sev.pills(
     default=SEVERIDADES,
     key="al_severidade",
     persist_state="session",
+    wrap=True,
 )
 # Lista fixa (não depende do período), para o valor guardado entre páginas ser sempre válido.
 indicadores = INDICADORES_ALERTA
@@ -50,6 +55,7 @@ escolhidos = col_ind.pills(
     default=indicadores,
     key="al_indicador",
     persist_state="session",
+    wrap=True,
 )
 filtrados = alertas[
     alertas["severidade"].isin(severidades) & alertas["indicador"].isin(escolhidos)
@@ -71,22 +77,40 @@ with st.container(key="card_linha_tempo"):
         alt="Linha do tempo com os meses em que cada regra de alerta foi acionada",
     )
 
+# Tabela sem a descrição longa: o st.dataframe não quebra texto dentro da célula, e a
+# descrição é a mesma em todas as linhas de uma regra (fica no gráfico, no CSV e em
+# "Regras e limites"). Cada coluna tem a largura do seu texto mais longo, para nada
+# aparecer cortado com "...".
 tabela = filtrados.assign(
     severidade=filtrados["severidade"].map(lambda s: f"{SIMBOLO_TEXTO[s]} {s}"),
     valor=filtrados["valor"].map(lambda v: formatar(v, 2)),
     limite=filtrados["limite"].map(lambda v: formatar(v, 2)),
-)[["mes_rotulo", "severidade", "indicador", "regra", "valor", "limite", "mensagem"]]
+)[["mes_rotulo", "severidade", "indicador", "regra", "valor", "limite"]]
+TITULOS = {
+    "mes_rotulo": "Mês",
+    "severidade": "Severidade",
+    "indicador": "Indicador",
+    "regra": "Regra",
+    "valor": "Valor",
+    "limite": "Limite",
+}
+larguras = {col: largura_coluna(tabela[col], titulo) for col, titulo in TITULOS.items()}
 st.dataframe(
     tabela,
     hide_index=True,
     column_config={
-        "mes_rotulo": st.column_config.TextColumn("Mês", pinned=True),
-        "severidade": "Severidade",
-        "indicador": "Indicador",
-        "regra": "Regra",
-        "valor": "Valor",
-        "limite": "Limite",
-        "mensagem": st.column_config.TextColumn("Descrição", width="large"),
+        "mes_rotulo": st.column_config.TextColumn("Mês", width=larguras["mes_rotulo"], pinned=True),
+        "severidade": st.column_config.TextColumn("Severidade", width=larguras["severidade"]),
+        "indicador": st.column_config.TextColumn("Indicador", width=larguras["indicador"]),
+        "regra": st.column_config.TextColumn(
+            "Regra",
+            width=larguras["regra"],
+            help='Descrição de cada regra em "Regras e limites", abaixo da tabela.',
+        ),
+        "valor": st.column_config.TextColumn("Valor", width=larguras["valor"], alignment="right"),
+        "limite": st.column_config.TextColumn(
+            "Limite", width=larguras["limite"], alignment="right"
+        ),
     },
     height=420,
     alt="Lista de alertas do período, do mais recente ao mais antigo",
