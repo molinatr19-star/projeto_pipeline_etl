@@ -1,0 +1,14 @@
+# Desenvolvimento: tudo do requirements.txt + ferramentas de teste, qualidade e análise.
+-r requirements.txt
+
+# Testes e qualidade
+pytest
+ruff
+ty
+
+# Notebooks
+jupyterlab
+matplotlib
+
+# Capturas de tela do painel para o README (scripts/capturar_telas.py)
+playwright

@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pipeline_etl"
+version = "0.1.0"
+description = "Pipeline ETL de portfólio: extração, limpeza, transformação e carga para consumo analítico."
+requires-python = ">=3.13"
+
+[project.scripts]
+pipeline-etl = "pipeline_etl.orquestracao.pipeline:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ty.src]
+# Verificação de tipos só no código de produção; os testes usam mocks e constantes de exemplo.
+include = ["src", "app.py", "paginas"]

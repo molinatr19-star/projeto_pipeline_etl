@@ -1,0 +1,33 @@
+# Ambiente
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Dados (manter só a estrutura)
+data/raw/*
+data/staging/*
+data/processed/*
+# A mart final é versionada: o painel publicado (Streamlit Cloud) lê este arquivo.
+!data/processed/indicadores_mensal.parquet
+data/external/*
+!data/**/.gitkeep
+
+# Warehouse e logs
+warehouse/*
+!warehouse/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# Segredos
+.env
+
+# Claude Code (configuração local pessoal)
+.claude/settings.local.json
+
+# Sistema
+.DS_Store
+Thumbs.db

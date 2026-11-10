@@ -1,0 +1,112 @@
+# Configuração do pipeline (sem segredos; eles ficam no .env).
+
+projeto: pipeline_etl
+fuso_horario: America/Sao_Paulo
+
+caminhos:
+  raw: data/raw
+  staging: data/staging
+  processed: data/processed
+  external: data/external
+  logs: logs
+  warehouse: warehouse/pipeline.duckdb   # pode ser trocado por DUCKDB_CAMINHO no .env
+
+fontes:
+  bcb_sgs:
+    descricao: Sistema Gerenciador de Séries Temporais do Banco Central do Brasil (API pública, sem autenticação)
+    url_base: https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados
+    timeout_s: 30
+    tentativas: 4            # total de tentativas por requisição
+    espera_inicial_s: 2      # dobra a cada nova tentativa (2, 4, 8...)
+    pausa_entre_chamadas_s: 1
+    janela_max_anos: 10      # limite da API para séries diárias
+    data_inicial_padrao: "2015-01-01"
+    modo: incremental          # incremental (a partir do raw existente) ou completo
+    sobreposicao_dias: 62      # incremental: reextrai os últimos dias para pegar revisões
+    tabela_staging: stg_bcb_series
+    # faixa_valida: limites de sanidade (não são previsões); valor fora deles bloqueia o staging
+    series:
+      - codigo: 433
+        nome: ipca_variacao_mensal
+        periodicidade: mensal
+        unidade: "% a.m."
+        faixa_valida: [-5, 5]
+      - codigo: 432
+        nome: selic_meta
+        periodicidade: diaria
+        unidade: "% a.a."
+        faixa_valida: [0, 50]
+      - codigo: 1
+        nome: dolar_venda
+        periodicidade: diaria
+        unidade: "R$/US$"
+        faixa_valida: [0.5, 20]
+      - codigo: 13521
+        nome: meta_inflacao
+        periodicidade: anual
+        unidade: "% a.a."
+        faixa_valida: [0, 10]
+      - codigo: 13522
+        nome: ipca_12m_oficial       # usada só na checagem de qualidade do IPCA 12 meses
+        periodicidade: mensal
+        unidade: "%"
+        faixa_valida: [-5, 50]
+      - codigo: 189
+        nome: igpm_variacao_mensal
+        periodicidade: mensal
+        unidade: "% a.m."
+        faixa_valida: [-10, 10]
+      - codigo: 4389
+        nome: cdi_anualizado
+        periodicidade: diaria
+        unidade: "% a.a."
+        faixa_valida: [0, 50]
+      - codigo: 24369
+        nome: desocupacao            # PNAD Contínua, trimestre móvel
+        periodicidade: mensal
+        unidade: "%"
+        faixa_valida: [0, 30]
+
+  bcb_focus:
+    descricao: Expectativas de mercado (Boletim Focus), API OData do Banco Central (Olinda)
+    url: https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/ExpectativasMercadoInflacao12Meses
+    # Filtro OData. Espaços precisam ir como %20 (com "+" a API responde HTTP 400).
+    filtro: "Indicador eq 'IPCA' and Suavizada eq 'S' and baseCalculo eq 0"
+    campos: [Data, Indicador, Mediana, Media, DesvioPadrao, numeroRespondentes]
+    timeout_s: 90
+    tentativas: 4
+    espera_inicial_s: 2
+    data_inicial_padrao: "2015-01-01"
+    modo: incremental
+    sobreposicao_dias: 30
+    tabela_staging: stg_focus_ipca_12m
+    faixa_valida: [-5, 30]
+
+  anbima_feriados:
+    descricao: Feriados nacionais (bancários) publicados pela ANBIMA em planilha .xls
+    url: https://www.anbima.com.br/feriados/arqs/feriados_nacionais.xls
+    arquivo_raw: feriados_nacionais.xls
+    timeout_s: 60
+    tentativas: 4
+    espera_inicial_s: 2
+    tabela_staging: stg_feriados
+    min_feriados_por_ano: 10   # sanidade: o arquivo tem 12 ou 13 por ano; menos indica arquivo truncado
+
+painel:
+  # Tolerância da meta de inflação, em p.p. (o centro da meta vem da série SGS 13521).
+  # Confirmado: 2,0 p.p. até 2016 e 1,5 p.p. a partir de 2017 (Resolução CMN 4.419/2015);
+  # 1,5 p.p. mantido até 2024. 2025 em diante (meta contínua): 1,5 p.p. (verificar).
+  tolerancia_meta_inflacao:
+    padrao: 1.5
+    por_ano: {2015: 2.0, 2016: 2.0}
+  # Limites definidos pelo projeto (não são oficiais); ajuste conforme a análise.
+  alertas:
+    ipca_mensal_alto_pct: 1.0      # IPCA de um único mês a partir deste valor
+    dolar_variacao_mes_pct: 5.0    # alta ou queda do dólar no mês, em módulo
+    meses_historico_recorde: 12    # histórico mínimo antes de apontar "dólar em nível recorde"
+  dias_dados_desatualizados: 3     # aviso no painel se a última carga for mais antiga que isso
+
+exportacoes:
+  - tabela: marts.mart_indicadores_mensal
+    arquivo: indicadores_mensal
+    formatos: [parquet, csv]

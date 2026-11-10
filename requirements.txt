@@ -1,0 +1,22 @@
+# Dependências para rodar o pipeline e o painel (é o que o Streamlit Community Cloud instala).
+# Desenvolvimento (testes, lint, notebooks, capturas de tela): requirements-dev.txt
+
+# Extração
+requests
+
+# Dados
+pandas
+numpy
+pyarrow
+python-calamine   # leitura de planilhas .xls/.xlsx pelo pandas (engine="calamine")
+
+# Banco de dados
+duckdb
+
+# Painel (app.py)
+streamlit
+plotly
+
+# Configuração
+python-dotenv
+pyyaml
