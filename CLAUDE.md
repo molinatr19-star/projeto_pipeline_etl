@@ -7,9 +7,10 @@ Terceiro projeto de portfólio da Molina, focado em engenharia e análise de dad
 - Fontes: API SGS do BCB (433 IPCA, 432 Selic meta, 1 dólar venda, 13521 meta de inflação, 13522 IPCA 12m oficial, 189 IGP-M, 4389 CDI, 24369 desocupação), API OData do Focus (expectativa IPCA 12 meses) e planilha .xls de feriados da ANBIMA.
 - Comando único: `pipeline-etl` (8 etapas; incremental por padrão; `--sem-extracao` não acessa a internet; `--completo` só na extração SGS/Focus via módulo).
 - Fluxo: extração -> staging (pandas) -> warehouse DuckDB (SQL em `sql/`, uma transação) -> exportação `data/processed/indicadores_mensal.{parquet,csv}` -> painel `app.py`.
-- 46 checagens de qualidade (20 + 8 + 6 no staging, 10 SQL no warehouse, 2 na exportação) e 89 testes. `ruff`, `ty` (só código de produção) e `pytest` rodam no CI.
+- 46 checagens de qualidade (20 + 8 + 6 no staging, 10 SQL no warehouse, 2 na exportação) e 98 testes. `ruff`, `ty` (só código de produção) e `pytest` rodam no CI.
 - Warehouse local em `C:/Users/Usuario/dados_pipeline_etl/pipeline.duckdb` via `DUCKDB_CAMINHO` no `.env` (fora do OneDrive; nunca em AppData: o Python da Microsoft Store redireciona).
 - Agendamento: tarefa do Windows `PipelineETL_Indicadores`, dias úteis 19h (`scripts/agendar_tarefa_windows.ps1`, log em `logs/agendador.log`).
+- Botão "Atualizar dados" (barra lateral, `dashboard/atualizacao.py`): roda o pipeline com `reextrair_hoje=True`; raw do mesmo dia ganha nova versão `__HHMMSS` (`utils/raw.py`); trava + intervalo mínimo de 10 min (`painel.atualizacao`).
 - Painel: 8 páginas (`paginas/`), lógica em `src/pipeline_etl/dashboard/` (dados, analise, relatorio, estilo, graficos). Filtros com `persist_state="session"`. Reiniciar o `streamlit run` depois de mudar `src/`.
 - Cores fixas por indicador, validadas (dark, fundo #12141c): Selic #3987e5, IPCA #c98500 (Focus = IPCA tracejado), juro real #d55181, dólar #1aa3b8, IGP-M #199e70, desocupação #9085e9, dias úteis/CDI #6b7a99. IGP-M nunca junto do dólar; desocupação nunca junto da Selic. Revalidar antes de trocar.
 - Painel online: falta a Molina publicar em share.streamlit.io (passos no README); a mart final é versionada para isso.

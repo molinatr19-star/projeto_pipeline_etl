@@ -115,6 +115,11 @@ def obter_mart() -> Mart:
     return _ler_mart_em_cache(str(parquet), str(warehouse), versao)
 
 
+def limpar_cache_mart() -> None:
+    """Descarta a mart em cache (usado depois de uma atualização pelo painel)."""
+    _ler_mart_em_cache.clear()
+
+
 def recortar(df: pd.DataFrame, inicio: pd.Timestamp, fim: pd.Timestamp) -> pd.DataFrame:
     """Meses entre `inicio` e `fim` (inclusive)."""
     return df[df["primeiro_dia_mes"].between(inicio, fim)].reset_index(drop=True)
@@ -202,7 +207,7 @@ def barra_lateral(mart: Mart) -> pd.DataFrame:
             f"Fontes: Banco Central (SGS) e ANBIMA. Dados de {rotulos[0]} a {rotulos[-1]}. "
             f"Leitura: {origem}, "
             f"gerada em {carga:%d/%m/%Y %H:%M}. "
-            "Para atualizar, rode `pipeline-etl` e recarregue a página."
+            "Para buscar dados novos, use o botão Atualizar dados abaixo."
         )
 
     inicio = df.loc[df["mes_rotulo"] == inicio_rot, "primeiro_dia_mes"].iloc[0]

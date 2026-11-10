@@ -13,7 +13,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from pipeline_etl.extracao.bcb_focus import ARQUIVO, NOME_FONTE, pasta_fonte
+from pipeline_etl.extracao.bcb_focus import NOME_BASE, NOME_FONTE, pasta_fonte
+from pipeline_etl.utils.raw import listar_arquivos
 
 PREFIXO_PARTICAO = "data_extracao="
 COLUNAS_STAGING = [
@@ -45,7 +46,7 @@ def ler_particoes(pasta: Path | None = None) -> pd.DataFrame:
     """Todas as partições do raw, com a data de extração de cada linha."""
     pasta = pasta or pasta_fonte()
     partes = []
-    for arquivo in sorted(pasta.glob(f"{PREFIXO_PARTICAO}*/{ARQUIVO}")):
+    for arquivo in listar_arquivos(pasta, NOME_BASE):
         registros = json.loads(arquivo.read_text(encoding="utf-8"))
         extracao = date.fromisoformat(arquivo.parent.name.removeprefix(PREFIXO_PARTICAO))
         partes.append(pd.DataFrame(registros).assign(data_extracao=extracao))

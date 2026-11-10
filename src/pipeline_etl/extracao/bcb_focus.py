@@ -27,9 +27,10 @@ from pipeline_etl.utils.caminhos import caminho_projeto
 from pipeline_etl.utils.configuracao import carregar_config, config_fonte
 from pipeline_etl.utils.http import baixar
 from pipeline_etl.utils.log import configurar_logging
+from pipeline_etl.utils.raw import arquivo_para_gravar, caminho_meta, listar_arquivos
 
 NOME_FONTE = "bcb_focus"
-ARQUIVO = "ipca_12m.json"
+NOME_BASE = "ipca_12m"  # arquivo do dia: ipca_12m.json; novas versões: ipca_12m__HHMMSS.json
 
 logger = logging.getLogger(__name__)
 
@@ -51,26 +52,30 @@ def pasta_fonte() -> Path:
     return caminho_projeto(carregar_config()["caminhos"]["raw"], NOME_FONTE)
 
 
-def arquivo_raw(data_extracao: date) -> Path:
-    return pasta_fonte() / f"data_extracao={data_extracao.isoformat()}" / ARQUIVO
+def pasta_particao(data_extracao: date) -> Path:
+    return pasta_fonte() / f"data_extracao={data_extracao.isoformat()}"
 
 
 def ultima_data_raw() -> date | None:
     """Maior data de pesquisa já presente no raw (todas as partições)."""
     datas = [
         date.fromisoformat(registro["Data"])
-        for arquivo in pasta_fonte().glob(f"data_extracao=*/{ARQUIVO}")
+        for arquivo in listar_arquivos(pasta_fonte(), NOME_BASE)
         for registro in json.loads(arquivo.read_text(encoding="utf-8"))
     ]
     return max(datas) if datas else None
 
 
-def executar(completo: bool = False) -> int:
-    """Extrai as expectativas e devolve a quantidade de registros gravados."""
+def executar(completo: bool = False, reextrair_hoje: bool = False) -> int:
+    """Extrai as expectativas e devolve a quantidade de registros gravados.
+
+    `reextrair_hoje=True` busca de novo mesmo que já tenha extraído hoje (nova versão
+    do arquivo do dia; o raw nunca é sobrescrito).
+    """
     cfg = config_fonte(NOME_FONTE)
     hoje = date.today()
-    destino = arquivo_raw(hoje)
-    if destino.exists():
+    destino = arquivo_para_gravar(pasta_particao(hoje), NOME_BASE, reextrair_hoje)
+    if destino is None:
         logger.info("%s: já extraído hoje; pulado (raw não é sobrescrito)", NOME_FONTE)
         return 0
 
@@ -99,7 +104,7 @@ def executar(completo: bool = False) -> int:
         "quantidade_registros": len(registros),
         "extraido_em": datetime.now().astimezone().isoformat(timespec="seconds"),
     }
-    destino.with_name(destino.name.replace(".json", ".meta.json")).write_text(
+    caminho_meta(destino).write_text(
         json.dumps(metadados, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     logger.info(

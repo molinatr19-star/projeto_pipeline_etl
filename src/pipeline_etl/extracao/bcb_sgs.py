@@ -37,6 +37,7 @@ import requests
 from pipeline_etl.utils.caminhos import caminho_projeto
 from pipeline_etl.utils.configuracao import carregar_config, config_fonte
 from pipeline_etl.utils.log import configurar_logging
+from pipeline_etl.utils.raw import arquivo_para_gravar, caminho_meta, listar_arquivos
 
 NOME_FONTE = "bcb_sgs"
 STATUS_TEMPORARIOS = {429, 500, 502, 503, 504}
@@ -183,7 +184,7 @@ def ultima_data_raw(codigo: int) -> date | None:
     """Maior data já extraída da série, somando todas as partições do raw."""
     raw = caminho_projeto(carregar_config()["caminhos"]["raw"], NOME_FONTE)
     ultima = None
-    for arquivo in raw.glob(f"data_extracao=*/serie_{codigo}.json"):
+    for arquivo in listar_arquivos(raw, f"serie_{codigo}"):
         for registro in json.loads(arquivo.read_text(encoding="utf-8")):
             dia = datetime.strptime(registro["data"], "%d/%m/%Y").date()
             ultima = dia if ultima is None or dia > ultima else ultima
@@ -202,14 +203,13 @@ def salvar_raw(
     serie: dict[str, Any],
     inicio: date,
     fim: date,
-    data_extracao: date,
+    arquivo_dados: Path,
     modo: str = "completo",
 ) -> Path:
-    """Grava os registros como vieram, mais um arquivo de metadados.
+    """Grava os registros como vieram em `arquivo_dados`, mais um arquivo de metadados.
 
-    Não sobrescreve: falha se a série já foi gravada na mesma data de extração.
+    Não sobrescreve: falha se o arquivo já existe.
     """
-    arquivo_dados = arquivo_raw(serie["codigo"], data_extracao)
     if arquivo_dados.exists():
         raise FileExistsError(f"{arquivo_dados} já existe; raw não é sobrescrito")
 
@@ -227,7 +227,7 @@ def salvar_raw(
         "extraido_em": datetime.now().astimezone().isoformat(timespec="seconds"),
     }
     arquivo_dados.write_text(json.dumps(registros, ensure_ascii=False), encoding="utf-8")
-    (pasta / f"serie_{serie['codigo']}.meta.json").write_text(
+    caminho_meta(arquivo_dados).write_text(
         json.dumps(metadados, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     return arquivo_dados
@@ -238,11 +238,14 @@ def executar(
     inicio: date | None = None,
     fim: date | None = None,
     completo: bool = False,
+    reextrair_hoje: bool = False,
 ) -> dict[int, int]:
     """Extrai as séries configuradas e devolve {codigo: quantidade_de_registros}.
 
     Sem `inicio` explícito, usa o modo do config: incremental (a partir do raw já
     existente) ou completo. `completo=True` força o histórico inteiro.
+    `reextrair_hoje=True` busca de novo o que já foi extraído hoje, gravando uma nova
+    versão do arquivo do dia (o raw nunca é sobrescrito).
     """
     cfg = config_fonte(NOME_FONTE)
     inicio_padrao = date.fromisoformat(cfg["data_inicial_padrao"])
@@ -268,7 +271,10 @@ def executar(
     with requests.Session() as sessao:
         sessao.headers["Accept"] = "application/json"
         for serie in series:
-            if arquivo_raw(serie["codigo"], hoje).exists():
+            destino = arquivo_para_gravar(
+                pasta_particao(hoje), f"serie_{serie['codigo']}", reextrair_hoje
+            )
+            if destino is None:
                 logger.info(
                     "Série %s (%s): já extraída hoje; pulada (raw não é sobrescrito)",
                     serie["codigo"],
@@ -288,7 +294,7 @@ def executar(
                 serie,
                 inicio_desta,
                 fim,
-                hoje,
+                destino,
                 "incremental" if incremental else "completo",
             )
             resumo[serie["codigo"]] = len(registros)

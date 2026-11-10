@@ -184,6 +184,21 @@ Exportação (2 checagens): cada arquivo relido tem as mesmas linhas da tabela d
   `scripts/agendar_tarefa_windows.ps1`. Configurada para iniciar também na bateria: o padrão do `schtasks`
   deixa a execução na fila ("Queued") em notebook fora da tomada.
 
+## Atualização pelo painel (botão "Atualizar dados")
+- Barra lateral do `app.py` (`src/pipeline_etl/dashboard/atualizacao.py`): roda as 8 etapas do pipeline com
+  `reextrair_hoje=True`, mostra o progresso de cada etapa (`st.status`), limpa o cache da mart e recarrega a
+  página. Em 2026-11-10 a primeira execução levou 5 s (incremental) e trouxe a cotação do dólar do próprio dia,
+  publicada depois da extração da manhã.
+- **Raw versionado no mesmo dia:** a primeira extração do dia grava `serie_<codigo>.json`; as seguintes gravam
+  `serie_<codigo>__HHMMSS.json` na mesma partição (o raw continua imutável). `src/pipeline_etl/utils/raw.py`
+  lista os arquivos na ordem de extração e o staging fica com a versão mais nova de cada data. A planilha da
+  ANBIMA continua com uma extração por dia.
+- Proteções: trava por servidor (uma atualização por vez, para todos os usuários) e intervalo mínimo entre
+  atualizações (`painel.atualizacao.intervalo_minimo_minutos`, padrão 10), contado a partir da última carga.
+  `painel.atualizacao.permitir: false` desativa o botão.
+- Falha: erro na tela e dados anteriores mantidos (warehouse em transação; exportação só depois dela).
+- Pela linha de comando: `pipeline-etl --reextrair-hoje`.
+
 ## CI e publicação
 - GitHub Actions (`.github/workflows/ci.yml`): `ruff check`, `ruff format --check`, `ty check`
   (código de produção: `src/`, `app.py`, `paginas/`) e `pytest` a cada envio para `main`.
@@ -230,6 +245,8 @@ Exportação (2 checagens): cada arquivo relido tem as mesmas linhas da tabela d
 | 2026-11-10 | Warehouse fora do OneDrive e fora do AppData | sincronização trava arquivos; Python da Store redireciona AppData |
 | 2026-11-10 | Agendador do Windows (não Prefect) | sem dependência nova; o orquestrador já devolve código de saída |
 | 2026-11-10 | IGP-M (verde-água) nunca no mesmo gráfico que o dólar (ciano) | validador de paleta: parecidos na visão normal (ΔE 10,6) |
+| 2026-11-10 | Botão do painel grava nova versão do raw do dia (`__HHMMSS`) | buscar dados publicados ao longo do dia sem sobrescrever o raw |
+| 2026-11-10 | Intervalo mínimo de 10 min entre atualizações pelo painel | painel público: evita excesso de chamadas às APIs do BCB |
 
 ## Execuções
 | Data | Fonte | Registros | Período retornado | Observação |

@@ -105,6 +105,10 @@ painel:
     dolar_variacao_mes_pct: 5.0    # alta ou queda do dólar no mês, em módulo
     meses_historico_recorde: 12    # histórico mínimo antes de apontar "dólar em nível recorde"
   dias_dados_desatualizados: 3     # aviso no painel se a última carga for mais antiga que isso
+  # Botão "Atualizar dados" da barra lateral (roda o pipeline pelo painel).
+  atualizacao:
+    permitir: true
+    intervalo_minimo_minutos: 10   # protege as APIs do BCB num painel público
 
 exportacoes:
   - tabela: marts.mart_indicadores_mensal

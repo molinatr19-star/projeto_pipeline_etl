@@ -15,8 +15,8 @@ Projeto de portfólio em engenharia de dados: um pipeline automatizado que extra
 - **Modelagem dimensional em SQL** versionado: dimensões, dois fatos (valor realizado e expectativa de mercado) e uma mart mensal.
 - **46 checagens de qualidade** em todas as camadas, incluindo o cruzamento entre fontes (nenhuma cotação do dólar em dia não útil) e a conferência do IPCA 12 meses calculado contra o publicado pelo BCB (diferença máxima de 0,01 p.p. em 130 meses).
 - **Falha segura**: a carga do warehouse roda numa transação; se uma checagem falha, nada é publicado.
-- **Painel** com 8 páginas: comparador MoM/YoY, alertas configuráveis (meta de inflação do CMN, choques cambiais) e relatório executivo para baixar.
-- **Engenharia de software**: 89 testes, lint e formatação (ruff), verificação de tipos (ty), CI no GitHub Actions e execução agendada.
+- **Painel** com 8 páginas: comparador MoM/YoY, alertas configuráveis (meta de inflação do CMN, choques cambiais), relatório executivo para baixar e botão **Atualizar dados**, que roda o pipeline pela tela (com trava e intervalo mínimo para proteger as APIs).
+- **Engenharia de software**: 98 testes, lint e formatação (ruff), verificação de tipos (ty), CI no GitHub Actions e execução agendada.
 
 ## Fontes de dados
 | Fonte | Tipo | Conteúdo |
@@ -59,6 +59,7 @@ pip install -e .
 
 pipeline-etl                            # pipeline completo (incremental)
 pipeline-etl --sem-extracao             # reprocessa sem acessar a internet
+pipeline-etl --reextrair-hoje           # consulta as APIs de novo no mesmo dia
 python -m streamlit run app.py          # painel
 pytest                                  # testes
 ```

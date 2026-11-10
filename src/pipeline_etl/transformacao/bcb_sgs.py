@@ -15,6 +15,7 @@ import pandas as pd
 
 from pipeline_etl.utils.caminhos import caminho_projeto
 from pipeline_etl.utils.configuracao import carregar_config
+from pipeline_etl.utils.raw import caminho_meta, listar_arquivos
 
 NOME_FONTE = "bcb_sgs"
 PREFIXO_PARTICAO = "data_extracao="
@@ -74,7 +75,7 @@ def localizar_raw_mais_recente(codigo: int, pasta_fonte: Path | None = None) -> 
     As partições usam data ISO (AAAA-MM-DD), então a ordem alfabética é a cronológica.
     """
     pasta_fonte = pasta_fonte or pasta_raw_fonte()
-    candidatos = sorted(pasta_fonte.glob(f"{PREFIXO_PARTICAO}*/serie_{codigo}.json"))
+    candidatos = listar_arquivos(pasta_fonte, f"serie_{codigo}")
     if not candidatos:
         raise FileNotFoundError(f"Nenhum raw da série {codigo} em {pasta_fonte}")
     return candidatos[-1]
@@ -87,7 +88,7 @@ def ler_raws(codigo: int, pasta_fonte: Path | None = None) -> list[RawSerie]:
     o histórico completo.
     """
     pasta_fonte = pasta_fonte or pasta_raw_fonte()
-    arquivos = sorted(pasta_fonte.glob(f"{PREFIXO_PARTICAO}*/serie_{codigo}.json"))
+    arquivos = listar_arquivos(pasta_fonte, f"serie_{codigo}")
     if not arquivos:
         raise FileNotFoundError(f"Nenhum raw da série {codigo} em {pasta_fonte}")
     return [_ler_arquivo(codigo, arquivo) for arquivo in arquivos]
@@ -99,7 +100,7 @@ def ler_raw(codigo: int, pasta_fonte: Path | None = None) -> RawSerie:
 
 
 def _ler_arquivo(codigo: int, arquivo: Path) -> RawSerie:
-    arquivo_meta = arquivo.with_name(f"serie_{codigo}.meta.json")
+    arquivo_meta = caminho_meta(arquivo)
     return RawSerie(
         codigo=codigo,
         registros=json.loads(arquivo.read_text(encoding="utf-8")),

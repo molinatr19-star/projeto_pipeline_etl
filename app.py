@@ -33,6 +33,7 @@ from pipeline_etl.dashboard.analise import (  # noqa: E402
     mes_referencia_padrao,
     parametros_do_config,
 )
+from pipeline_etl.dashboard.atualizacao import secao_atualizacao  # noqa: E402
 from pipeline_etl.dashboard.dados import (  # noqa: E402
     Mart,
     barra_lateral,
@@ -103,6 +104,9 @@ st.session_state["_alertas_periodo"] = alertas[
         periodo["primeiro_dia_mes"].min(), periodo["primeiro_dia_mes"].max()
     )
 ].reset_index(drop=True)
+
+# Atualização dos dados pelo painel (botão na barra lateral; progresso no topo da página).
+secao_atualizacao(mart)
 
 # Exportação: relatório executivo e dados do período, em qualquer página.
 with st.sidebar:
